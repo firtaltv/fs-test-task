@@ -5,7 +5,7 @@ from pydantic import EmailStr
 from sqlalchemy import Column, Enum
 from sqlmodel import Field, Relationship, SQLModel
 
-from app.core.permissions import Role
+from app.core.permissions import Permission, Role
 
 
 def get_datetime_utc() -> datetime:
@@ -78,6 +78,12 @@ class UserPublic(UserBase):
     id: uuid.UUID
     role: Role
     created_at: datetime | None = None
+
+
+# The current user plus what their role allows, so the frontend never
+# re-implements the role -> permission map
+class UserMe(UserPublic):
+    permissions: list[Permission]
 
 
 class UsersPublic(SQLModel):
