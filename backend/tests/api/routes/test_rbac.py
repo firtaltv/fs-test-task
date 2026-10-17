@@ -46,18 +46,27 @@ def sole_admin(client: TestClient, db: Session) -> Generator[RoleUser]:
     """A fresh admin who is the only *active* admin for the duration of the test.
 
     Other admins are deactivated rather than deleted, which also proves that
-    inactive admins don't count towards the last-admin rule.
+    inactive admins don't count towards the last-admin rule. They are always
+    reactivated, even if the test errors, since the tests share the dev
+    database and its real admins.
     """
-    others = db.exec(select(User).where(User.role == Role.ADMIN, User.is_active)).all()
-    for other in others:
-        other.is_active = False
-        db.add(other)
-    db.commit()
-    yield RoleUser(*create_user_with_role(client=client, db=db, role=Role.ADMIN))
-    for other in others:
-        other.is_active = True
-        db.add(other)
-    db.commit()
+    admin = RoleUser(*create_user_with_role(client=client, db=db, role=Role.ADMIN))
+    others = db.exec(
+        select(User).where(
+            User.role == Role.ADMIN, User.is_active, User.id != admin.user.id
+        )
+    ).all()
+    try:
+        for other in others:
+            other.is_active = False
+            db.add(other)
+        db.commit()
+        yield admin
+    finally:
+        for other in others:
+            other.is_active = True
+            db.add(other)
+        db.commit()
 
 
 def denial_logs(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
