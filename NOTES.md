@@ -127,9 +127,18 @@ What tripped me up, now covered in the README:
 - **Explicit nulls in `PATCH /users/{id}`.** `{"role": null}` is ignored, but
   `{"is_active": null}` or `{"email": null}` still reach the NOT NULL columns
   and return 500. This was already in the template and is left out of this change.
-- **Logged path.** Denial logs record the route template, so path parameters
-  such as an email never reach the logs. The template doesn't include the
-  `/api/v1` prefix.
+- **Denial logs contain no PII; the access log does.** Denial logs record the
+  route template, without the `/api/v1` prefix, so path parameters never reach
+  them. Uvicorn's access log, on by default and inherited from the template,
+  records full URLs. The template's `POST /password-recovery/{email}` (no
+  auth) and `/password-recovery-html-content/{email}` therefore write emails
+  to it. Fixing that means moving the email into the request body (an API
+  change) or filtering the access log, which is out of scope here.
+- **Tests briefly deactivate real admins.** The last-admin tests need a sole
+  active admin, so for the duration of one test they deactivate the other
+  admins in the shared dev database, including the seeded one, and always
+  reactivate them afterwards. Using the app as an admin during a test run can
+  hit "Inactive user".
 
 ## Future work
 

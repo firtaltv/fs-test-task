@@ -77,7 +77,8 @@ uv run bash scripts/tests-start.sh
 
 The backend tests use the same `app` database as local development. Their
 teardown removes only the users and items the tests created, so the seeded users
-and your own data are kept.
+and your own data are kept. While one last-admin test runs, the other admins are
+briefly deactivated, so avoid using the app as an admin during a test run.
 
 End-to-end (Playwright, needs Bun and a running backend on :8000):
 
@@ -130,7 +131,9 @@ route decorator. Some checks depend on the loaded record: someone else's
 item, or another user by id. The handler makes those itself with
 `check_permission(request, user, permission)`. Both raise 403 and log one
 WARNING line with the user id, the permission, the method and the route
-template. Path values such as an email never reach the logs. A bad,
+template, so path values such as an email never reach these denial logs.
+The server's access log, inherited from the template, is separate and does
+record full URLs (see [NOTES.md](NOTES.md#known-limitations)). A bad,
 expired or unknown-user token is a 401 with `WWW-Authenticate`, and an
 inactive account is a 403. Dependencies were chosen over decorators, which
 don't play well with FastAPI's signature inspection, and over middleware,
