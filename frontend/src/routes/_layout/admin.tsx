@@ -1,13 +1,15 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { createFileRoute, redirect } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
 
 import { type UserPublic, UsersService } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
 import { DataTable } from "@/components/Common/DataTable"
+import RouteError from "@/components/Common/RouteError"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
+import { requirePermission } from "@/lib/routeGuards"
 
 function getUsersQueryOptions() {
   return {
@@ -19,14 +21,8 @@ function getUsersQueryOptions() {
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
-  beforeLoad: async () => {
-    const { data: user } = await UsersService.readUserMe()
-    if (user.role !== "admin") {
-      throw redirect({
-        to: "/",
-      })
-    }
-  },
+  beforeLoad: requirePermission("users:read"),
+  errorComponent: RouteError,
   head: () => ({
     meta: [
       {
