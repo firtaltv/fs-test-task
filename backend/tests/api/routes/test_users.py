@@ -6,20 +6,21 @@ from sqlmodel import Session, select
 
 from app import crud
 from app.core.config import settings
+from app.core.permissions import Role
 from app.core.security import verify_password
 from app.models import User, UserCreate
 from tests.utils.user import create_random_user
 from tests.utils.utils import random_email, random_lower_string
 
 
-def test_get_users_superuser_me(
+def test_get_users_admin_me(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
     r = client.get(f"{settings.API_V1_STR}/users/me", headers=superuser_token_headers)
     current_user = r.json()
     assert current_user
     assert current_user["is_active"] is True
-    assert current_user["is_superuser"]
+    assert current_user["role"] == Role.ADMIN
     assert current_user["email"] == settings.FIRST_SUPERUSER
 
 
@@ -30,7 +31,7 @@ def test_get_users_normal_user_me(
     current_user = r.json()
     assert current_user
     assert current_user["is_active"] is True
-    assert current_user["is_superuser"] is False
+    assert current_user["role"] == Role.MEMBER
     assert current_user["email"] == settings.EMAIL_TEST_USER
 
 
@@ -57,7 +58,7 @@ def test_create_user_new_email(
         assert user.email == created_user["email"]
 
 
-def test_get_existing_user_as_superuser(
+def test_get_existing_user_as_admin(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
     username = random_email()
@@ -76,7 +77,7 @@ def test_get_existing_user_as_superuser(
     assert existing_user.email == api_user["email"]
 
 
-def test_get_non_existing_user_as_superuser(
+def test_get_non_existing_user_as_admin(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
     r = client.get(
@@ -448,19 +449,19 @@ def test_delete_user_me(client: TestClient, db: Session) -> None:
     assert user_db is None
 
 
-def test_delete_user_me_as_superuser(
+def test_delete_user_me_as_admin(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
     r = client.delete(
         f"{settings.API_V1_STR}/users/me",
         headers=superuser_token_headers,
     )
-    assert r.status_code == 403
+    assert r.status_code == 409
     response = r.json()
-    assert response["detail"] == "Super users are not allowed to delete themselves"
+    assert response["detail"] == "Admins are not allowed to delete themselves"
 
 
-def test_delete_user_super_user(
+def test_delete_user_as_admin(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
     username = random_email()
@@ -490,19 +491,20 @@ def test_delete_user_not_found(
     assert r.json()["detail"] == "User not found"
 
 
-def test_delete_user_current_super_user_error(
+def test_delete_user_current_admin_error(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
-    super_user = crud.get_user_by_email(session=db, email=settings.FIRST_SUPERUSER)
-    assert super_user
-    user_id = super_user.id
+    admin = crud.get_user_by_email(session=db, email=settings.FIRST_SUPERUSER)
+    assert admin
+    assert admin.role == Role.ADMIN
+    user_id = admin.id
 
     r = client.delete(
         f"{settings.API_V1_STR}/users/{user_id}",
         headers=superuser_token_headers,
     )
-    assert r.status_code == 403
-    assert r.json()["detail"] == "Super users are not allowed to delete themselves"
+    assert r.status_code == 409
+    assert r.json()["detail"] == "Admins are not allowed to delete themselves"
 
 
 def test_delete_user_without_privileges(

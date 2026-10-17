@@ -1,8 +1,9 @@
 import uuid
 from typing import Any
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
+from app.core.permissions import Role
 from app.core.security import get_password_hash, verify_password
 from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
 
@@ -19,6 +20,9 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
 
 def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
+    # role is NOT NULL; an explicit null means "leave unchanged"
+    if "role" in user_data and user_data["role"] is None:
+        del user_data["role"]
     extra_data = {}
     if "password" in user_data:
         password = user_data["password"]
@@ -29,6 +33,15 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     session.commit()
     session.refresh(db_user)
     return db_user
+
+
+def count_active_admins(*, session: Session) -> int:
+    statement = (
+        select(func.count())
+        .select_from(User)
+        .where(User.role == Role.ADMIN, User.is_active)
+    )
+    return session.exec(statement).one()
 
 
 def get_user_by_email(*, session: Session, email: str) -> User | None:

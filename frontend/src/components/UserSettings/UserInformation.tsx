@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { UsersService, type UserUpdateMe } from "@/client"
+import RoleBadge from "@/components/Common/RoleBadge"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -15,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -136,6 +138,16 @@ const UserInformation = () => {
               )
             }
           />
+
+          {/* Read-only: a role can only be changed by an admin */}
+          {currentUser && (
+            <div className="grid gap-2">
+              <Label>Role</Label>
+              <div className="py-2" data-testid="current-role">
+                <RoleBadge role={currentUser.role} />
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3">
             {editMode ? (
