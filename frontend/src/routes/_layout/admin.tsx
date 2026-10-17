@@ -9,6 +9,7 @@ import { DataTable } from "@/components/Common/DataTable"
 import RouteError from "@/components/Common/RouteError"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
+import usePermission from "@/hooks/usePermission"
 import { requirePermission } from "@/lib/routeGuards"
 
 function getUsersQueryOptions() {
@@ -53,6 +54,8 @@ function UsersTable() {
 }
 
 function Admin() {
+  const canCreateUsers = usePermission("users:create")
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -62,7 +65,7 @@ function Admin() {
             Manage user accounts and permissions
           </p>
         </div>
-        <AddUser />
+        {canCreateUsers && <AddUser />}
       </div>
       <UsersTable />
     </div>
