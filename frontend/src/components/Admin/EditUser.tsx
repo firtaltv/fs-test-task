@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import useAuth, { currentUserQueryOptions } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { ROLES } from "@/lib/roles"
 import { handleError } from "@/utils"
@@ -61,6 +62,7 @@ interface EditUserProps {
 const EditUser = ({ user, onSuccess }: EditUserProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { user: currentUser } = useAuth()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
   const form = useForm<FormData>({
@@ -86,6 +88,12 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
+      // Editing yourself can change your own role and permissions
+      if (user.id === currentUser?.id) {
+        queryClient.invalidateQueries({
+          queryKey: currentUserQueryOptions.queryKey,
+        })
+      }
     },
   })
 
