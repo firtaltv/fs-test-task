@@ -13,7 +13,8 @@ Design decisions:
 - Backend: 103 pytest tests pass.
   - 38 of them are in `tests/api/routes/test_rbac.py`.
   - The rest are the template's tests updated for roles, plus seeding and README-drift tests.
-- Frontend: 70 Playwright tests pass, 8 of them in `tests/rbac.spec.ts`.
+- Frontend: 72 Playwright tests pass, including the auth setup step. 10 of
+  them are in `tests/rbac.spec.ts`.
 - Every commit on the branch passes the checks on its own:
   - backend: ruff, mypy, ty, and the app boots;
   - frontend: biome, tsc and the production build.
@@ -51,13 +52,23 @@ review found four template tests that passed vacuously after `is_superuser` was
 dropped (Pydantic silently ignored the old field). They now assert the role
 explicitly.
 
-**Frontend breakages.** Three deliberate bugs, each caught by the e2e specs:
+**Frontend breakages.** Six deliberate bugs, each caught by the e2e specs:
 
 | Deliberate bug | Tests failing |
 |---|---|
 | `/admin` route guard removed | 2 |
 | Row actions menu shown regardless of permission | 1 |
 | Sidebar ignores permissions | 1 |
+| Backend returns 403 again for admin self-delete (generic toast instead of the reason) | 1 |
+| Member granted `users:read` on the backend (nav links appear after `/users/me`) | 1 |
+| Frontend no longer signs out a deactivated user | 1 |
+
+The last three runs exposed two e2e assertions that could pass vacuously:
+
+- A retrying "toast not visible" check passed once the toast auto-dismissed.
+  It now reads the toast once.
+- A "link absent" check ran before `/users/me` resolved. It now waits for the
+  current user first.
 
 **Clean-checkout run.** I cloned the branch into a temp directory, ran
 `docker compose down -v`, then followed only the README quick start. That covered
@@ -76,6 +87,8 @@ A second clean run covered the full-Docker path (README option A):
   The output was truncated, so the exact tests weren't captured.
 - Two more runs passed 70/70. I'm treating it as a cold-start flake, but it
   wasn't root-caused.
+- One deliberate reproduction attempt (fresh volumes, full-Docker stack,
+  Playwright traces on) passed 72/72, so it didn't reproduce.
 
 What tripped me up, now covered in the README:
 
@@ -85,6 +98,21 @@ What tripped me up, now covered in the README:
 - **Containers from another checkout block the run.** The checkout's folder name sets the Compose project name. Containers from a checkout with the same name, or anything already on port 5432, collide. Run `docker compose down` there first.
 - **Playwright needs a browser once:** `bunx playwright install chromium`.
 - **`changethis` warnings at startup are expected in development.**
+
+**Adversarial review.** A final review of `git diff main..feat/rbac` used an
+independent reviewer in addition to my own pass. Every finding was checked
+against the code before acting on it. It found no endpoint reachable with less
+than its documented permission and no escalation through any write schema.
+Fixed, each in its own commit:
+
+- A password-reset token used as a Bearer token returned 500 instead of 401.
+- The `sole_admin` test fixture could leave the dev database with no active admin.
+- The docs overstated the absence of PII in logs.
+- Some README steps didn't work verbatim.
+- Admin self-delete now returns 409 like the last-admin rule, so 403 always
+  means a missing permission.
+- Deactivated users are signed out with a notice.
+- Unreachable code was removed, and a frontend module was restructured.
 
 ## Pre-existing bugs fixed along the way
 
@@ -149,7 +177,13 @@ What tripped me up, now covered in the README:
 - **404 instead of 403 for other users' items.** `GET/PUT/DELETE /items/{id}`
   returns 404 for a missing item but 403 for someone else's, so a member can
   probe which item ids exist. Returning 404 for both, for callers without
-  `items:manage_all`, would close that. Item semantics were kept as-is here.
+  `items:manage_all`, would close that.
+  - This differs from `/users/{id}` on purpose. That route is new RBAC
+    surface, so it checks permission before the lookup.
+  - The item routes predate RBAC and were kept as they were (404 before 403,
+    and the "Not enough permissions" detail), along with the tests that pin
+    that behaviour.
+  - It's a deliberate scope boundary, not an oversight.
 - **Split `system:manage`.** It covers the test-email and password-reset-preview
   endpoints. Split it if those ever need different audiences.
 
@@ -162,6 +196,20 @@ These still say "superuser" but mean "the seeded admin":
 - Settings and env vars `FIRST_SUPERUSER` and `FIRST_SUPERUSER_PASSWORD`
   (`.env`, compose files, deploy workflows, deployment docs).
 - Frontend e2e config `firstSuperuser` / `firstSuperuserPassword`.
+
+## Commit history notes
+
+History was left as-is rather than rewritten. Three commits read better with
+these notes:
+
+- `e4c0210` (client regeneration) includes a six-line compile bridge so it
+  type-checks. Its message says so, and later commits replace every bridged
+  line.
+- `4b3d6a7` describes an EditUser refresh that could never run. `c584967`
+  removes it and explains why.
+- `80913b3` says every former superuser check goes through
+  `require_permission`/`check_permission`. `read_items` calls `has_permission`
+  directly, because it filters a list rather than denying a request.
 
 ## Time
 
@@ -184,6 +232,8 @@ Everything else went beyond it:
 - local seeding;
 - the clean-checkout verification;
 - the generated README matrix;
-- the ADRs.
+- the ADRs;
+- the review rounds and their fixes (409 for invariants, deactivated sign-out,
+  full-Docker verification, test-teardown fix).
 
 They're listed separately so a reviewer can judge the core on its own.
