@@ -55,12 +55,11 @@ Backend (pytest, needs Postgres from step 1):
 ```bash
 cd backend
 uv run bash scripts/tests-start.sh
-uv run python app/initial_data.py   # re-seed: the test teardown deletes all users
 ```
 
-The backend tests use the same `app` database as local development, and their
-teardown deletes **every** user and item, including the seeded ones. Re-seed
-afterwards as shown.
+The backend tests use the same `app` database as local development. Their
+teardown removes only the users and items the tests created, so the seeded users
+and your own data are kept.
 
 End-to-end (Playwright, needs the backend from step 2 running on :8000):
 

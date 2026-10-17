@@ -65,8 +65,9 @@ migrate, seed, backend tests (100 passed at that commit), both dev servers,
 logging in as each seeded role, and the e2e suite (70 passed). What tripped me
 up, now covered in the README:
 
-- **Backend test teardown deletes every user**, including the seeded ones. Re-seed with `uv run python app/initial_data.py`.
-- **The backend tests share the `app` database** with local development.
+- **Backend test teardown deleted every user**, including the seeded ones.
+  This was inherited from the template. It's fixed now: see
+  "Pre-existing bugs fixed along the way".
 - **Containers from another checkout block the run.** The checkout's folder name sets the Compose project name. Containers from a checkout with the same name, or anything already on port 5432, collide. Run `docker compose down` there first.
 - **Playwright needs a browser once:** `bunx playwright install chromium`.
 - **`changethis` warnings at startup are expected in development.**
@@ -78,6 +79,10 @@ up, now covered in the README:
   show the previous user's links and buttons. The backend still refused their
   requests. With permission-gated UI this became visible, so logout now clears
   the cache and login drops the cached current user.
+- **Backend tests wiped the dev database.** The tests share the `app`
+  database with local development, and their teardown deleted every user and
+  item. It now snapshots existing ids after `init_db` and deletes only the
+  rows created during the run.
 - **Lint failed after an e2e run.** biome checked Playwright output
   (`test-results/`, `playwright/.auth/`). It now ignores them.
 
