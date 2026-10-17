@@ -17,8 +17,11 @@ const logInAs = async (page: Page, role: Role) => {
 
 test.describe("Navigation", () => {
   test("Member doesn't see the Admin or Metrics links", async ({ page }) => {
-    await logInAs(page, "member")
+    const email = await logInAs(page, "member")
 
+    // Wait for /users/me: before it resolves the gated links are hidden for
+    // everyone, so the absence checks below would pass vacuously
+    await expect(page.getByText(email).first()).toBeVisible()
     await expect(page.getByRole("link", { name: "Items" })).toBeVisible()
     await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0)
     await expect(page.getByRole("link", { name: "Metrics" })).toHaveCount(0)
