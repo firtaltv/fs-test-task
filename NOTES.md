@@ -42,6 +42,10 @@ These still say "superuser" but mean "the seeded admin":
 
 ## Unrelated issue noticed, not fixed here
 
-- `frontend/src/routes/_layout/settings.tsx` uses `tabsConfig.slice(0, 3)`
-  for privileged users, which is all three tabs, so admins still see the
-  "Danger zone" tab even though the backend rejects their self-delete.
+- Admins see the "Danger zone" (delete account) tab in settings even though
+  the backend rejects their self-delete. The template meant to hide it but
+  used `tabsConfig.slice(0, 3)`, which is all three tabs. The RBAC change
+  removed that no-op branch (it compared roles, which components must not
+  do) without changing behaviour. A real fix needs a signal from the
+  backend, e.g. a `can_delete_self` flag on `/users/me`, since "admins can't
+  delete themselves" is a role invariant, not a permission.
