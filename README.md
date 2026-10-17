@@ -3,6 +3,173 @@
 [![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)
 [![Test Backend](../../actions/workflows/test-backend.yml/badge.svg)](../../actions/workflows/test-backend.yml)
 
+## Role-Based Access Control
+
+This fork adds three roles (**admin**, **manager**, **member**) to the template.
+Routes require permissions, never roles, and one static map in
+[`backend/app/core/permissions.py`](backend/app/core/permissions.py) decides
+which role has which permission. The frontend reads the caller's computed
+permissions from `GET /users/me` and gates pages, links and buttons on them.
+
+Design decisions: [ADR 0001](docs/adr/0001-permission-based-rbac.md) (permission-based RBAC) and
+[ADR 0002](docs/adr/0002-backend-computed-capabilities.md) (backend-computed capabilities).
+Limitations, future work and verification notes: [NOTES.md](NOTES.md).
+
+### Quick start
+
+Requires Docker, [uv](https://docs.astral.sh/uv/) and [Bun](https://bun.sh).
+Ports 5432, 8000, 5173, 1025 and 8025 must be free.
+
+```bash
+# 1. Postgres and Mailpit
+docker compose up -d --wait db mailpit
+
+# 2. Backend: install, migrate, seed one user per role, run the API on :8000
+cd backend
+uv sync
+uv run bash scripts/prestart.sh
+uv run fastapi dev
+
+# 3. Frontend, in a second terminal from the repository root: UI on :5173
+bun install
+bun run dev
+```
+
+Open <http://localhost:5173> and log in with one of the seeded users:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@example.com` | `changethis` |
+| Manager | `manager@example.com` | `changethis` |
+| Member | `member@example.com` | `changethis` |
+
+The admin comes from `FIRST_SUPERUSER*`. The manager and member come from
+`SEED_MANAGER_*` and `SEED_MEMBER_*` in [`.env`](.env). They are only created
+when `FASTAPI_ENV=development`, never in staging or production. Seeding is
+idempotent: re-running it leaves existing users untouched.
+
+### Running the tests
+
+Backend (pytest, needs Postgres from step 1):
+
+```bash
+cd backend
+uv run bash scripts/tests-start.sh
+uv run python app/initial_data.py   # re-seed: the test teardown deletes all users
+```
+
+The backend tests use the same `app` database as local development, and their
+teardown deletes **every** user and item, including the seeded ones. Re-seed
+afterwards as shown.
+
+End-to-end (Playwright, needs the backend from step 2 running on :8000):
+
+```bash
+cd frontend
+bunx playwright install chromium   # once
+bunx playwright test
+```
+
+Playwright starts the Vite dev server itself if it isn't already running.
+
+### Migration
+
+Revision `b7e4c1d9a2f3` replaces `user.is_superuser` with `user.role`
+(`VARCHAR(32)`). Existing superusers become admins and everyone else becomes a
+member. **The downgrade is lossy:** only admins map back to
+`is_superuser = true`, so managers come back as regular users.
+
+### Permission matrix
+
+Generated from `ROLE_PERMISSIONS` by
+`backend/scripts/permission_matrix.py`. A test fails if this table drifts from
+the code (update it with `uv run python scripts/permission_matrix.py --write`
+in `backend/`).
+
+<!-- permission-matrix:start -->
+| Permission | Grants | Admin | Manager | Member |
+|---|---|:-:|:-:|:-:|
+| `users:read` | List users and view any user (`GET /users/`, `GET /users/{id}`) | ✓ | ✓ | – |
+| `users:create` | Create users with any role (`POST /users/`) | ✓ | – | – |
+| `users:update` | Update any user, including role and active flag (`PATCH /users/{id}`) | ✓ | – | – |
+| `users:delete` | Delete other users (`DELETE /users/{id}`) | ✓ | – | – |
+| `items:manage_all` | List, view, update and delete everyone's items (`/items/`) | ✓ | – | – |
+| `metrics:read` | View usage metrics (`GET /metrics/`) | ✓ | ✓ | – |
+| `system:manage` | Admin tools: test email, password-reset email preview | ✓ | – | – |
+<!-- permission-matrix:end -->
+
+Every signed-in, active user can view and update their own profile, change
+their own password, and manage their own items. These need no permission.
+Two rules protect the admin role itself:
+
+- An admin can't delete their own account.
+- The last active admin can't be demoted or deactivated. That request returns 409.
+
+### Approach
+
+**Where checks live.** Route-level checks are a FastAPI dependency:
+`dependencies=[Depends(require_permission(Permission.USERS_READ))]` on the
+route decorator. Some checks depend on the loaded record: someone else's
+item, or another user by id. The handler makes those itself with
+`check_permission(request, user, permission)`. Both raise 403 and log one
+WARNING line with the user id, the permission, the method and the route
+template. Path values such as an email never reach the logs. A bad,
+expired or unknown-user token is a 401 with `WWW-Authenticate`, and an
+inactive account is a 403. Dependencies were chosen over decorators, which
+don't play well with FastAPI's signature inspection, and over middleware,
+which has no per-route context.
+
+**How roles are stored and validated.** `user.role` is a `VARCHAR(32)` column
+that SQLAlchemy validates against the `Role` `StrEnum`. It isn't a native
+Postgres ENUM, so adding a role needs no migration. The role is read from the
+database on every request, never from the JWT, so a demotion takes effect on
+the user's next request. Self-service schemas (`UserRegister`, `UserUpdateMe`)
+have no role field, so signup and profile edits can't set a role.
+
+**How the frontend learns capabilities.** `GET /users/me` returns `role` (for
+display) and `permissions`, which the backend computes from the same map. The
+frontend never re-implements that map. `usePermission(perm)` and `can(user, perm)` take the
+generated `Permission` type, so a misspelled permission fails to compile.
+Routes declare `beforeLoad: requirePermission(...)`, which works on direct
+navigation and on hard refresh, and render an Access denied page instead of
+redirecting. A 401 logs the user out. A 403 shows a toast and keeps them
+signed in.
+
+**Adding a role.**
+
+1. Add a `Role` member and its row in `ROLE_PERMISSIONS`.
+2. Run `scripts/permission_matrix.py --write`.
+3. Regenerate the client with `bash scripts/generate-client.sh`.
+4. Add the label and badge variant in `frontend/src/lib/roles.ts` and
+   `frontend/src/components/Common/RoleBadge.tsx`. Both are typed
+   `Record<Role, …>`, so the build fails until they're added.
+
+No route, component or migration changes.
+
+### Request path
+
+```mermaid
+flowchart TD
+    subgraph Frontend
+        nav["Navigate or hard refresh"] --> guard{"beforeLoad: requirePermission"}
+        guard -- "missing" --> denied["Access denied page"]
+        guard -- "granted" --> page["Page renders; usePermission gates links and buttons"]
+    end
+    page -- "API call with Bearer token" --> authn{"get_current_user: decode JWT, load user from DB"}
+    authn -- "bad or expired token, unknown user" --> e401["401 + WWW-Authenticate; frontend logs out"]
+    authn -- "inactive user" --> e403i["403"]
+    authn -- "active user" --> route{"require_permission (route level)"}
+    route -- "missing" --> e403["403 + WARNING log; frontend shows a toast"]
+    route -- "granted" --> handler["Route handler"]
+    handler --> object{"check_permission (object level): owner, or has the permission"}
+    object -- "missing" --> e403
+    object -- "allowed" --> ok["200"]
+```
+
+---
+
+*The rest of this README is the original template documentation.*
+
 ## Technology Stack and Features
 
 - ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
