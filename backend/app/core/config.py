@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 
+    # Demo users seeded next to the first superuser, one per non-admin role.
+    # Only ever created when FASTAPI_ENV is "development" (see init_db).
+    SEED_MANAGER_EMAIL: EmailStr | None = None
+    SEED_MANAGER_PASSWORD: str | None = None
+    SEED_MEMBER_EMAIL: EmailStr | None = None
+    SEED_MEMBER_PASSWORD: str | None = None
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (
