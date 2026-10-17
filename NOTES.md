@@ -187,6 +187,19 @@ Fixed, each in its own commit:
 - **Split `system:manage`.** It covers the test-email and password-reset-preview
   endpoints. Split it if those ever need different audiences.
 
+## CI in this repository
+
+- **Upstream-only workflows removed on `feat/rbac`.** These were the
+  template's maintainer and deploy workflows: deploy, deploy-docker-compose,
+  smokeshow, add-to-project, issue-manager, bump-pre-commit-hooks,
+  guard-dependencies, detect-conflicts, prepare-release and
+  create-draft-release, plus the `latest-changes`, `pr-push`, `pr-submit` and
+  `dependabot` configs. They need the upstream project's secrets, apps or
+  boards. Kept: test-backend, playwright, pre-commit, test-docker-compose and
+  zizmor. `main` keeps the untouched template, so `smokeshow` (which runs from
+  `main`'s copy via `workflow_run`) is disabled at the repo level with
+  `gh workflow disable` until this branch is merged.
+
 ## Naming left as-is to keep the diff small
 
 These still say "superuser" but mean "the seeded admin":
