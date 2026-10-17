@@ -7,7 +7,7 @@ import {
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
 import ErrorComponent from "@/components/Common/ErrorComponent"
 import NotFound from "@/components/Common/NotFound"
-import type { RouterContext } from "@/lib/routeGuards"
+import type { RouterContext } from "@/lib/permissions"
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => (

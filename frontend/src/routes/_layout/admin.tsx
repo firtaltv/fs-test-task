@@ -5,8 +5,8 @@ import { Suspense } from "react"
 import { type UserPublic, UsersService } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
+import AccessDeniedOrError from "@/components/Common/AccessDeniedOrError"
 import { DataTable } from "@/components/Common/DataTable"
-import RouteError from "@/components/Common/RouteError"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
 import usePermission from "@/hooks/usePermission"
@@ -23,7 +23,7 @@ function getUsersQueryOptions() {
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
   beforeLoad: requirePermission("users:read"),
-  errorComponent: RouteError,
+  errorComponent: AccessDeniedOrError,
   head: () => ({
     meta: [
       {

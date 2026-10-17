@@ -11,7 +11,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
-import { can } from "@/hooks/usePermission"
+import { can } from "@/lib/permissions"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
 

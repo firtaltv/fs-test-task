@@ -1,16 +1,8 @@
-import type { Permission, UserMe } from "@/client"
+import type { Permission } from "@/client"
+import { can } from "@/lib/permissions"
 import useAuth from "./useAuth"
 
-/**
- * Whether the user's role grants the permission. The backend computes the
- * permission list on /users/me, so the frontend never re-implements the
- * role -> permission map. UI gating only; the backend enforces every check.
- */
-export const can = (
-  user: UserMe | null | undefined,
-  permission: Permission,
-): boolean => user?.permissions.includes(permission) ?? false
-
+/** React wrapper around can() for the signed-in user. */
 const usePermission = (permission: Permission): boolean => {
   const { user } = useAuth()
   return can(user, permission)

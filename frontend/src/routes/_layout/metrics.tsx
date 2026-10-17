@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { CircleAlert } from "lucide-react"
 
 import { MetricsService } from "@/client"
-import RouteError from "@/components/Common/RouteError"
+import AccessDeniedOrError from "@/components/Common/AccessDeniedOrError"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,7 +26,7 @@ function getMetricsQueryOptions() {
 export const Route = createFileRoute("/_layout/metrics")({
   component: Metrics,
   beforeLoad: requirePermission("metrics:read"),
-  errorComponent: RouteError,
+  errorComponent: AccessDeniedOrError,
   head: () => ({
     meta: [
       {

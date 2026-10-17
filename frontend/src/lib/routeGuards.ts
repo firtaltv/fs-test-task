@@ -1,12 +1,6 @@
-import type { QueryClient } from "@tanstack/react-query"
-
 import type { Permission } from "@/client"
 import { currentUserQueryOptions } from "@/hooks/useAuth"
-import { can } from "@/hooks/usePermission"
-
-export interface RouterContext {
-  queryClient: QueryClient
-}
+import { can, type RouterContext } from "@/lib/permissions"
 
 export class PermissionDeniedError extends Error {
   constructor(readonly permission: Permission) {
@@ -18,7 +12,7 @@ export class PermissionDeniedError extends Error {
 /**
  * Route guard for beforeLoad. Reads the current user from the shared cache
  * (fetching it on a hard refresh) and throws PermissionDeniedError, which
- * the route's errorComponent renders as AccessDenied.
+ * the route's errorComponent (AccessDeniedOrError) renders as AccessDenied.
  */
 export const requirePermission =
   (permission: Permission) =>
