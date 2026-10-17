@@ -28,7 +28,7 @@ docker compose watch
 
 Open <http://localhost:8000>. The frontend is built into the backend image and
 served by FastAPI. The first build takes a few minutes. Host ports 80, 1025,
-5432, 8000, 8025, 8080 and 8090 must be free. `docker compose watch` also
+5432, 8000, 8025, 8080, 8090 and 9323 must be free. `docker compose watch` also
 starts a `playwright` container that exits straight away; that's expected.
 
 **Option B: database in Docker, app on the host** (requires Docker,
@@ -157,14 +157,15 @@ signed in.
 
 **Adding a role.**
 
-1. Add a `Role` member and its row in `ROLE_PERMISSIONS`.
-2. Run `scripts/permission_matrix.py --write`.
-3. Regenerate the client with `bash scripts/generate-client.sh`.
-4. Add the label and badge variant in `frontend/src/lib/roles.ts` and
+1. In `backend/app/core/permissions.py`, add a `Role` member and its row in
+   `ROLE_PERMISSIONS`.
+2. Update the README matrix: `cd backend && uv run python scripts/permission_matrix.py --write`.
+3. Regenerate the client from the repository root: `bash scripts/generate-client.sh`.
+4. Add the label in `frontend/src/lib/roles.ts` and the badge variant in
    `frontend/src/components/Common/RoleBadge.tsx`. Both are typed
    `Record<Role, …>`, so the build fails until they're added.
 
-No route, component or migration changes.
+No migration, no route changes, and no other frontend changes.
 
 ### Request path
 
