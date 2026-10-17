@@ -124,6 +124,12 @@ class ItemsPublic(SQLModel):
     count: int
 
 
+class MetricsPublic(SQLModel):
+    users_total: int
+    users_by_role: dict[Role, int]
+    items_total: int
+
+
 # Generic message
 class Message(SQLModel):
     message: str
