@@ -1,10 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 
 import {
   type Body_login_login_access_token as AccessToken,
   LoginService,
-  type UserPublic,
+  type UserMe,
   type UserRegister,
   UsersService,
 } from "@/client"
@@ -15,14 +20,19 @@ const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null
 }
 
+// Shared by useAuth and the route guards so both read the same cache entry
+export const currentUserQueryOptions = queryOptions<UserMe>({
+  queryKey: ["currentUser"],
+  queryFn: async () => (await UsersService.readUserMe()).data,
+})
+
 const useAuth = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
 
-  const { data: user } = useQuery<UserPublic | null, Error>({
-    queryKey: ["currentUser"],
-    queryFn: async () => (await UsersService.readUserMe()).data,
+  const { data: user } = useQuery({
+    ...currentUserQueryOptions,
     enabled: isLoggedIn(),
   })
 
@@ -43,6 +53,8 @@ const useAuth = () => {
       body: data,
     })
     localStorage.setItem("access_token", response.data.access_token)
+    // Never show the previous session's permissions to the new user
+    queryClient.removeQueries({ queryKey: currentUserQueryOptions.queryKey })
   }
 
   const loginMutation = useMutation({
@@ -55,6 +67,7 @@ const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem("access_token")
+    queryClient.clear()
     navigate({ to: "/login" })
   }
 
