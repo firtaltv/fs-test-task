@@ -1,4 +1,4 @@
-import { Briefcase, Home, Users } from "lucide-react"
+import { Briefcase, ChartColumn, Home, Users } from "lucide-react"
 
 import type { Permission } from "@/client"
 
@@ -19,6 +19,12 @@ import { User } from "./User"
 const navItems: (Item & { permission?: Permission })[] = [
   { icon: Home, title: "Dashboard", path: "/" },
   { icon: Briefcase, title: "Items", path: "/items" },
+  {
+    icon: ChartColumn,
+    title: "Metrics",
+    path: "/metrics",
+    permission: "metrics:read",
+  },
   { icon: Users, title: "Admin", path: "/admin", permission: "users:read" },
 ]
 
