@@ -68,7 +68,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
     defaultValues: {
       email: user.email,
       full_name: user.full_name ?? undefined,
-      is_superuser: user.is_superuser,
+      is_superuser: user.role === "admin",
       is_active: user.is_active,
     },
   })
