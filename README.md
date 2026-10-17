@@ -14,6 +14,7 @@ permissions from `GET /users/me` and gates pages, links and buttons on them.
 Design decisions: [ADR 0001](docs/adr/0001-permission-based-rbac.md) (permission-based RBAC) and
 [ADR 0002](docs/adr/0002-backend-computed-capabilities.md) (backend-computed capabilities).
 Limitations, future work and verification notes: [NOTES.md](NOTES.md).
+Conversation exports from the AI-assisted development of this change: [docs/ai-logs/](docs/ai-logs/).
 
 ### Quick start
 
