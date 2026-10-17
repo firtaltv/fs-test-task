@@ -122,8 +122,12 @@ What tripped me up, now covered in the README:
 - **Stale UI until refetch.** If an admin changes someone's role, that user's
   UI updates on their next `/users/me` fetch. Until then the backend refuses
   their requests and the UI shows a 403 toast.
-- **Inactive users with a live token** get a 403 toast on each request instead of being
-  logged out, because 403 means "authenticated but not allowed".
+- **Deactivated users are signed out on their next current-user fetch.** The
+  backend keeps returning 403. `/users/me` needs no permission, so the
+  frontend treats a 403 on that query as "deactivated": it signs the user out
+  and shows a notice on the login page. That fetch happens on a hard refresh,
+  on window focus, or when a component using the query mounts. Until then,
+  other requests show the 403 toast.
 - **Explicit nulls in `PATCH /users/{id}`.** `{"role": null}` is ignored, but
   `{"is_active": null}` or `{"email": null}` still reach the NOT NULL columns
   and return 500. This was already in the template and is left out of this change.

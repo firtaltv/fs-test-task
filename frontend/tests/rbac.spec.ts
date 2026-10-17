@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test"
 import type { Role } from "../src/client"
 import { firstSuperuser, firstSuperuserPassword } from "./config.ts"
-import { createUserWithRole } from "./utils/adminApi"
+import { createUserWithRole, deactivateUser } from "./utils/adminApi"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser } from "./utils/user"
 
@@ -146,5 +146,29 @@ test.describe("Invariants", () => {
     await page.reload()
     await expect(page).toHaveURL("/settings")
     await expect(page.getByTestId("current-role")).toHaveText("Admin")
+  })
+})
+
+test.describe("Deactivated account", () => {
+  test("Is signed out and told why on the next current-user fetch", async ({
+    page,
+  }) => {
+    const email = randomEmail()
+    const password = randomPassword()
+    const user = await createUserWithRole({ email, password, role: "member" })
+    await logInUser(page, email, password)
+    await expect(page.getByText(email).first()).toBeVisible()
+
+    await deactivateUser(user.id)
+    // A hard refresh refetches /users/me, which now returns 403
+    await page.reload()
+
+    await expect(page).toHaveURL("/login?reason=deactivated")
+    await expect(page.getByTestId("deactivated-alert")).toHaveText(
+      /Your account has been deactivated/,
+    )
+    // Signed out for real: protected pages send you back to login
+    await page.goto("/")
+    await expect(page).toHaveURL(/\/login/)
   })
 })

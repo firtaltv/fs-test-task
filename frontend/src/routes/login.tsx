@@ -9,6 +9,7 @@ import { z } from "zod"
 
 import type { Body_login_login_access_token as AccessToken } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Form,
   FormControl,
@@ -34,6 +35,11 @@ type FormData = z.infer<typeof formSchema>
 
 export const Route = createFileRoute("/login")({
   component: Login,
+  // Set by the global error handler when the account was deactivated
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { reason?: "deactivated" } =>
+    search.reason === "deactivated" ? { reason: "deactivated" } : {},
   beforeLoad: async () => {
     if (isLoggedIn()) {
       throw redirect({
@@ -52,6 +58,7 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const { loginMutation } = useAuth()
+  const { reason } = Route.useSearch()
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -77,6 +84,14 @@ function Login() {
           <div className="flex flex-col items-center gap-2 text-center">
             <h1 className="text-2xl font-bold">Login to your account</h1>
           </div>
+          {reason === "deactivated" && (
+            <Alert variant="destructive" data-testid="deactivated-alert">
+              <AlertDescription>
+                Your account has been deactivated. Contact an administrator if
+                you think this is a mistake.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="grid gap-4">
             <FormField

@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
+import { AxiosError } from "axios"
 
 import {
   type Body_login_login_access_token as AccessToken,
@@ -24,6 +25,11 @@ const isLoggedIn = () => {
 export const currentUserQueryOptions = queryOptions<UserMe>({
   queryKey: ["currentUser"],
   queryFn: async () => (await UsersService.readUserMe()).data,
+  // A 4xx (401 signed out, 403 deactivated) won't change on retry; failing
+  // fast lets the global handler sign the user out straight away
+  retry: (failureCount, error) =>
+    !(error instanceof AxiosError && (error.response?.status ?? 500) < 500) &&
+    failureCount < 3,
 })
 
 const useAuth = () => {
