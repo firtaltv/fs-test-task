@@ -456,7 +456,7 @@ def test_delete_user_me_as_admin(
         f"{settings.API_V1_STR}/users/me",
         headers=superuser_token_headers,
     )
-    assert r.status_code == 403
+    assert r.status_code == 409
     response = r.json()
     assert response["detail"] == "Admins are not allowed to delete themselves"
 
@@ -503,7 +503,7 @@ def test_delete_user_current_admin_error(
         f"{settings.API_V1_STR}/users/{user_id}",
         headers=superuser_token_headers,
     )
-    assert r.status_code == 403
+    assert r.status_code == 409
     assert r.json()["detail"] == "Admins are not allowed to delete themselves"
 
 

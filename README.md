@@ -118,10 +118,11 @@ in `backend/`).
 
 Every signed-in, active user can view and update their own profile, change
 their own password, and manage their own items. These need no permission.
-Two rules protect the admin role itself:
+Two rules protect the admin role itself. Both return 409 ("would break an
+invariant"), so 403 always means a missing permission:
 
 - An admin can't delete their own account.
-- The last active admin can't be demoted or deactivated. That request returns 409.
+- The last active admin can't be demoted or deactivated.
 
 ### Approach
 

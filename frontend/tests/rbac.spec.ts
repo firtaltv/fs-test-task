@@ -120,3 +120,28 @@ test.describe("Own profile", () => {
     await expect(page.getByRole("combobox")).toHaveCount(0)
   })
 })
+
+test.describe("Invariants", () => {
+  test("Admin deleting their own account sees why and stays signed in", async ({
+    page,
+  }) => {
+    await logInAs(page, "admin")
+
+    await page.goto("/settings")
+    await page.getByRole("tab", { name: "Danger zone" }).click()
+    await page.getByRole("button", { name: "Delete Account" }).click()
+    await page.getByRole("button", { name: "Delete", exact: true }).click()
+
+    // 409: the backend's reason, not the generic permission toast. Read the
+    // toast once: a retrying "not visible" assertion would pass as soon as
+    // the toast auto-dismisses.
+    const toast = page
+      .locator("[data-sonner-toast]")
+      .filter({ hasText: "Admins are not allowed to delete themselves" })
+    await expect(toast).toBeVisible()
+    expect(await toast.innerText()).not.toContain("permission")
+    await page.reload()
+    await expect(page).toHaveURL("/settings")
+    await expect(page.getByTestId("current-role")).toHaveText("Admin")
+  })
+})

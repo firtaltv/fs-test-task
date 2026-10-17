@@ -145,7 +145,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     # Role invariant, not a permission: the system must keep its admins
     if current_user.role == Role.ADMIN:
         raise HTTPException(
-            status_code=403, detail="Admins are not allowed to delete themselves"
+            status_code=409, detail="Admins are not allowed to delete themselves"
         )
     session.delete(current_user)
     session.commit()
@@ -243,7 +243,7 @@ def delete_user(
         raise HTTPException(status_code=404, detail="User not found")
     if user == current_user:
         raise HTTPException(
-            status_code=403, detail="Admins are not allowed to delete themselves"
+            status_code=409, detail="Admins are not allowed to delete themselves"
         )
     statement = delete(Item).where(col(Item.owner_id) == user_id)
     session.exec(statement)
