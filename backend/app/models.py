@@ -147,9 +147,10 @@ class Token(SQLModel):
     token_type: str = "bearer"
 
 
-# Contents of JWT token
+# Contents of JWT token. sub must be a user id, so other tokens signed with the
+# same key (e.g. password-reset tokens, whose sub is an email) are rejected
 class TokenPayload(SQLModel):
-    sub: str | None = None
+    sub: uuid.UUID
 
 
 class NewPassword(SQLModel):

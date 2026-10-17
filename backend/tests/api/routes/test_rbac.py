@@ -19,6 +19,7 @@ from app.core.config import settings
 from app.core.permissions import ROLE_PERMISSIONS, Permission, Role
 from app.core.security import create_access_token
 from app.models import User
+from app.utils import generate_password_reset_token
 from tests.utils.item import create_random_item
 from tests.utils.user import create_random_user, create_user_with_role
 from tests.utils.utils import random_email, random_lower_string
@@ -322,6 +323,13 @@ def test_demoted_manager_loses_access_on_next_request(
                 + create_access_token(uuid.uuid4(), timedelta(minutes=-5))
             },
             id="expired token",
+        ),
+        pytest.param(
+            {
+                "Authorization": "Bearer "
+                + generate_password_reset_token(email=settings.FIRST_SUPERUSER)
+            },
+            id="password-reset token",
         ),
     ],
 )
