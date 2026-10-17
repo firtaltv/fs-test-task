@@ -17,8 +17,23 @@ Limitations, future work and verification notes: [NOTES.md](NOTES.md).
 
 ### Quick start
 
-Requires Docker, [uv](https://docs.astral.sh/uv/) and [Bun](https://bun.sh).
-Ports 5432, 8000, 5173, 1025 and 8025 must be free.
+Both options seed one user per role (see the table below).
+
+**Option A: everything in Docker** (the template default; requires Docker only):
+
+```bash
+docker compose run --rm backend bash scripts/prestart.sh   # build, migrate, seed
+docker compose watch
+```
+
+Open <http://localhost:8000>. The frontend is built into the backend image and
+served by FastAPI. The first build takes a few minutes. Host ports 80, 1025,
+5432, 8000, 8025, 8080 and 8090 must be free. `docker compose watch` also
+starts a `playwright` container that exits straight away; that's expected.
+
+**Option B: database in Docker, app on the host** (requires Docker,
+[uv](https://docs.astral.sh/uv/) and [Bun](https://bun.sh); ports 1025, 5432,
+5173, 8000 and 8025 must be free):
 
 ```bash
 # 1. Postgres and Mailpit
@@ -35,7 +50,7 @@ bun install
 bun run dev
 ```
 
-Open <http://localhost:5173> and log in with one of the seeded users:
+Log in (option A: <http://localhost:8000>, option B: <http://localhost:5173>) with one of the seeded users:
 
 | Role | Email | Password |
 |---|---|---|
@@ -45,15 +60,18 @@ Open <http://localhost:5173> and log in with one of the seeded users:
 
 The admin comes from `FIRST_SUPERUSER*`. The manager and member come from
 `SEED_MANAGER_*` and `SEED_MEMBER_*` in [`.env`](.env). They are only created
-when `FASTAPI_ENV=development`, never in staging or production. Seeding is
+when `FASTAPI_ENV=development` (set by `compose.override.yml` for option A and
+by `.env` for option B), never in staging or production. Seeding is
 idempotent: re-running it leaves existing users untouched.
 
 ### Running the tests
 
-Backend (pytest, needs Postgres from step 1):
+Backend (pytest). The tests aren't in the Docker image, so they run with uv
+against the database from either option:
 
 ```bash
 cd backend
+uv sync
 uv run bash scripts/tests-start.sh
 ```
 
@@ -61,15 +79,15 @@ The backend tests use the same `app` database as local development. Their
 teardown removes only the users and items the tests created, so the seeded users
 and your own data are kept.
 
-End-to-end (Playwright, needs the backend from step 2 running on :8000):
+End-to-end (Playwright, needs Bun and a running backend on :8000):
 
 ```bash
+bun install                        # from the repository root, once
 cd frontend
 bunx playwright install chromium   # once
-bunx playwright test
+bunx playwright test               # option B: starts Vite itself if needed
+PLAYWRIGHT_BASE_URL=http://localhost:8000 bunx playwright test   # option A
 ```
-
-Playwright starts the Vite dev server itself if it isn't already running.
 
 ### Migration
 

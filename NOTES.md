@@ -62,8 +62,22 @@ explicitly.
 **Clean-checkout run.** I cloned the branch into a temp directory, ran
 `docker compose down -v`, then followed only the README quick start. That covered
 migrate, seed, backend tests (100 passed at that commit), both dev servers,
-logging in as each seeded role, and the e2e suite (70 passed). What tripped me
-up, now covered in the README:
+logging in as each seeded role, and the e2e suite (70 passed).
+
+A second clean run covered the full-Docker path (README option A):
+
+- `docker compose run --rm backend bash scripts/prestart.sh` built the image,
+  migrated and seeded all three roles.
+- After `docker compose watch`, the UI at :8000 behaved per role, including
+  typing `/admin` and `/metrics` directly.
+- The backend tests passed (102) against the Docker database.
+- e2e with `PLAYWRIGHT_BASE_URL=http://localhost:8000` had 2 failures on the
+  first cold run, in the e2e suite's output after `reset-password.spec.ts`.
+  The output was truncated, so the exact tests weren't captured.
+- Two more runs passed 70/70. I'm treating it as a cold-start flake, but it
+  wasn't root-caused.
+
+What tripped me up, now covered in the README:
 
 - **Backend test teardown deleted every user**, including the seeded ones.
   This was inherited from the template. It's fixed now: see
