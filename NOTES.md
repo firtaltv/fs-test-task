@@ -10,8 +10,8 @@ Design decisions:
 
 **Test suites.**
 
-- Backend: 102 pytest tests pass.
-  - 37 of them are in `tests/api/routes/test_rbac.py`.
+- Backend: 103 pytest tests pass.
+  - 38 of them are in `tests/api/routes/test_rbac.py`.
   - The rest are the template's tests updated for roles, plus seeding and README-drift tests.
 - Frontend: 70 Playwright tests pass, 8 of them in `tests/rbac.spec.ts`.
 - Every commit on the branch passes the checks on its own:
